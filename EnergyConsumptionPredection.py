@@ -2,34 +2,62 @@ import streamlit as st
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, r2_score
 
-st.title('Energy Consumption Prediction')
 
-# Allow user to upload an Excel file
-file = st.file_uploader('Upload Excel file', type=['xls', 'xlsx'])
+def main():
+    st.set_page_config(page_title='Energy Consumption Prediction', layout='wide')
+    st.title('Energy Consumption Prediction')
 
-if file is not None:
-    # Read the Excel file into a pandas dataframe
-    df = pd.read_excel(file)
+    # Allow user to upload an Excel file
+    st.sidebar.title('Upload data')
+    uploaded_file = st.sidebar.file_uploader('Choose a file', type=['xlsx'])
 
-    # Drop any rows with missing values
-    df.dropna(inplace=True)
+    if uploaded_file is not None:
+        try:
+            # Read the uploaded file into a pandas dataframe
+            df = pd.read_excel(uploaded_file)
 
-    # Split the data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(df[['value_1', 'value_2', 'value_3']], df['yearly_consumption'], test_size=0.2)
+            # Display the dataframe
+            st.subheader('Data')
+            st.write(df)
 
-    # Train a linear regression model on the training data
-    model = LinearRegression()
-    model.fit(X_train, y_train)
+            # Split the data into training and test sets
+            X_train, X_test, y_train, y_test = train_test_split(df[['value_1', 'value_2', 'value_3']], 
+                                                                df['yearly_consumption'], 
+                                                                test_size=0.2, random_state=42)
 
-    # Make predictions on the testing data
-    y_pred = model.predict(X_test)
+            # Train the model
+            lr = LinearRegression()
+            lr.fit(X_train, y_train)
 
-    # Calculate the root mean squared error (RMSE) of the predictions
-    rmse = mean_squared_error(y_test, y_pred, squared=False)
+            # Make predictions on the test set
+            y_pred = lr.predict(X_test)
 
-    # Display the RMSE to the user
-    st.write(f'Root Mean Squared Error: {rmse:.2f}')
-else:
-    st.write('Please upload an Excel file.')
+            # Evaluate the model using mean squared error and R-squared
+            mse = mean_squared_error(y_test, y_pred)
+            r2 = r2_score(y_test, y_pred)
+
+            # Display model evaluation metrics
+            st.subheader('Model evaluation')
+            st.write(f'Mean squared error: {mse:.2f}')
+            st.write(f'R-squared: {r2:.2f}')
+
+            # Allow user to enter new data for prediction
+            st.subheader('Predict')
+            value_1 = st.number_input('Enter value 1', min_value=0, step=1)
+            value_2 = st.number_input('Enter value 2', min_value=0, step=1)
+            value_3 = st.number_input('Enter value 3', min_value=0, step=1)
+
+            # Make prediction on new data
+            y_new_pred = lr.predict([[value_1, value_2, value_3]])
+
+            # Display predicted yearly consumption
+            st.write(f'Predicted yearly consumption: {y_new_pred[0]:.2f}')
+
+        except Exception as e:
+            st.error(f'Error: {e}')
+
+
+if __name__ == '__main__':
+    main()

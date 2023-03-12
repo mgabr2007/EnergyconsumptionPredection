@@ -1,42 +1,67 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 def main():
-    st.title("Energy Consumption Prediction")
-    st.write("Please upload the energy consumption data in Excel format")
-    file = st.file_uploader("Upload file", type=["xlsx", "xls"])
-    
+    st.title("Energy Consumption Prediction App")
+
+    # File upload
+    st.header("Upload your dataset")
+    file = st.file_uploader("Choose a CSV or Excel file", type=["csv", "xlsx"])
+
     if file is not None:
-        df = pd.read_excel(file)
-        st.write("Here are the first few rows of the data:")
-        st.dataframe(df.head())
+        try:
+            # Read dataset
+            df = pd.read_excel(file)
 
-        # Get predictor variables
-        predictor_cols = st.multiselect("Select predictor variables", options=df.columns[4:13])
-        num_predictors = len(predictor_cols)
-        st.write("Number of predictor variables selected:", num_predictors)
+            # Column selection
+            st.header("Select the predictor variables")
+            predictor_cols = st.multiselect("Select columns", options=list(df.columns))
 
-        # Prepare data
-        X = df[predictor_cols]
-        y = df['yearly_consumption']
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+            # Number of predictor variables
+            num_predictors = len(predictor_cols)
+            st.write("Number of predictor variables:", num_predictors)
 
-        # Train model
-        model = LinearRegression()
-        model.fit(X_train, y_train)
+            # Target column selection
+            st.header("Select the target variable")
+            target_col = st.selectbox("Select column", options=list(df.columns))
 
-        # Make predictions
-        st.write("Enter the predictor variable values for the prediction")
-        predictor_values = []
-        for col in predictor_cols:
-            value = st.number_input(f"Enter {col}", value=0, step=1)
-            predictor_values.append(value)
-        prediction = model.predict([predictor_values])
+            # Train-test split
+            X_train, X_test, y_train, y_test = train_test_split(df[predictor_cols], df[target_col], test_size=0.2)
 
-        st.write(f"The predicted energy consumption is {prediction[0]:.2f} kWh")
+            # Model training
+            model = LinearRegression()
+            model.fit(X_train, y_train)
+
+            # Model evaluation
+            score = model.score(X_test, y_test)
+            st.write("Model score:", score)
+
+            # Prediction input
+            st.header("Enter predictor variable values for prediction")
+            input_dict = {}
+            for col in predictor_cols:
+                val = st.number_input(f"Enter {col} value")
+                input_dict[col] = [val]
+            input_df = pd.DataFrame.from_dict(input_dict)
+
+            # Prediction
+            prediction = model.predict(input_df)
+            st.write("Predicted value:", prediction[0])
+
+            # Graph
+            st.header("Graph of the data")
+            sns.scatterplot(x=predictor_cols[0], y=target_col, data=df)
+            plt.xlabel(predictor_cols[0])
+            plt.ylabel(target_col)
+            st.pyplot()
+
+        except Exception as e:
+            st.write("An error occurred:", e)
 
 
 if __name__ == "__main__":

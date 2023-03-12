@@ -1,38 +1,39 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 
-# Disable PyplotGlobalUseWarning
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
-# Read data
-file = st.file_uploader("Upload file", type=["xlsx"])
-if file:
-    df = pd.read_excel(file)
+st.title("Energy Consumption Prediction")
 
-    # Select predictor variables
-    predictor_cols = st.multiselect("Select predictor variables", list(df.columns))
+uploaded_file = st.file_uploader("Choose a file")
 
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(df[predictor_cols], df['yearly_consumption'], test_size=0.2)
+if uploaded_file is not None:
+    df = pd.read_excel(uploaded_file)
+    st.write(df)
 
-    # Train model
-    model = LinearRegression()
-    model.fit(X_train, y_train)
+    col_list = df.columns.tolist()
+    col_selected = st.multiselect('Select the predictor variables:', col_list)
+    st.write('You selected:', len(col_selected), 'predictor variables')
 
-    # Predict on input
-    input_data = []
-    for col in predictor_cols:
-        value = st.number_input(f"Enter {col}")
-        input_data.append(value)
-    prediction = model.predict([input_data])
+    X = df[col_selected]
+    y = df['yearly_consumption']
 
-    # Display prediction
-    st.write("Predicted yearly consumption:", prediction[0])
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-    # Plot relationship between predictor variables and consumption
+    lm = LinearRegression()
+    lm.fit(X_train, y_train)
+
+    predictions = lm.predict(X_test)
+
     fig, ax = plt.subplots()
-    sns.pairplot(df, x_vars=predictor_cols, y_vars='yearly_consumption', height=5, aspect=0.7, kind='reg')
+    ax.scatter(y_test, predictions)
+    ax.plot(y_test, y_test, 'r')
+    ax.set_xlabel('Actual')
+    ax.set_ylabel('Predicted')
     st.pyplot(fig)
+
+    st.write('R^2 Score:', lm.score(X_test, y_test))

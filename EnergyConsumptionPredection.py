@@ -1,34 +1,43 @@
-import streamlit as st
 import pandas as pd
+import streamlit as st
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 
-# Load data from file uploaded by user
-uploaded_file = st.file_uploader("Choose a file")
-if uploaded_file is not None:
-    df = pd.read_excel(uploaded_file)
 
-    # Create a list of all columns except the target variable and the 'id' column
-    predictor_columns = [col for col in df.columns if col not in ['id', 'yearly_consumption']]
+def main():
+    st.title("Energy Consumption Prediction")
+    st.write("Please upload the energy consumption data in Excel format")
+    file = st.file_uploader("Upload file", type=["xlsx", "xls"])
     
-    # Add a dropdown list to select predictor variables
-    selected_columns = st.multiselect('Select predictor variables', predictor_columns)
+    if file is not None:
+        df = pd.read_excel(file)
+        st.write("Here are the first few rows of the data:")
+        st.dataframe(df.head())
 
-    if len(selected_columns) > 0:
-        # Split data into training and testing sets
-        X_train, X_test, y_train, y_test = train_test_split(df[selected_columns], df['yearly_consumption'], test_size=0.2)
+        # Get predictor variables
+        predictor_cols = st.multiselect("Select predictor variables", options=df.columns[4:13])
+        num_predictors = len(predictor_cols)
+        st.write("Number of predictor variables selected:", num_predictors)
 
-        # Train a linear regression model on the training set
+        # Prepare data
+        X = df[predictor_cols]
+        y = df['yearly_consumption']
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+        # Train model
         model = LinearRegression()
         model.fit(X_train, y_train)
 
-        # Predict the yearly consumption for the user-input values
-        st.write('Enter predictor values:')
-        input_values = []
-        for col in selected_columns:
-            val = st.number_input(col)
-            input_values.append(val)
-        predicted_consumption = model.predict([input_values])
+        # Make predictions
+        st.write("Enter the predictor variable values for the prediction")
+        predictor_values = []
+        for col in predictor_cols:
+            value = st.number_input(f"Enter {col}", value=0, step=1)
+            predictor_values.append(value)
+        prediction = model.predict([predictor_values])
 
-        # Display the predicted yearly consumption
-        st.write('Predicted yearly consumption:', predicted_consumption[0])
+        st.write(f"The predicted energy consumption is {prediction[0]:.2f} kWh")
+
+
+if __name__ == "__main__":
+    main()

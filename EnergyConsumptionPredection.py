@@ -1,68 +1,38 @@
 import streamlit as st
 import pandas as pd
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
 
+# Disable PyplotGlobalUseWarning
+st.set_option('deprecation.showPyplotGlobalUse', False)
 
-def main():
-    st.title("Energy Consumption Prediction App")
+# Read data
+file = st.file_uploader("Upload file", type=["xlsx"])
+if file:
+    df = pd.read_excel(file)
 
-    # File upload
-    st.header("Upload your dataset")
-    file = st.file_uploader("Choose a CSV or Excel file", type=["csv", "xlsx"])
+    # Select predictor variables
+    predictor_cols = st.multiselect("Select predictor variables", list(df.columns))
 
-    if file is not None:
-        try:
-            # Read dataset
-            df = pd.read_excel(file)
+    # Split data
+    X_train, X_test, y_train, y_test = train_test_split(df[predictor_cols], df['yearly_consumption'], test_size=0.2)
 
-            # Column selection
-            st.header("Select the predictor variables")
-            predictor_cols = st.multiselect("Select columns", options=list(df.columns))
+    # Train model
+    model = LinearRegression()
+    model.fit(X_train, y_train)
 
-            # Number of predictor variables
-            num_predictors = len(predictor_cols)
-            st.write("Number of predictor variables:", num_predictors)
+    # Predict on input
+    input_data = []
+    for col in predictor_cols:
+        value = st.number_input(f"Enter {col}")
+        input_data.append(value)
+    prediction = model.predict([input_data])
 
-            # Target column selection
-            st.header("Select the target variable")
-            target_col = st.selectbox("Select column", options=list(df.columns))
+    # Display prediction
+    st.write("Predicted yearly consumption:", prediction[0])
 
-            # Train-test split
-            X_train, X_test, y_train, y_test = train_test_split(df[predictor_cols], df[target_col], test_size=0.2)
-
-            # Model training
-            model = LinearRegression()
-            model.fit(X_train, y_train)
-
-            # Model evaluation
-            score = model.score(X_test, y_test)
-            st.write("Model score:", score)
-
-            # Prediction input
-            st.header("Enter predictor variable values for prediction")
-            input_dict = {}
-            for col in predictor_cols:
-                val = st.number_input(f"Enter {col} value")
-                input_dict[col] = [val]
-            input_df = pd.DataFrame.from_dict(input_dict)
-
-            # Prediction
-            prediction = model.predict(input_df)
-            st.write("Predicted value:", prediction[0])
-
-            # Graph
-            st.header("Graph of the data")
-            sns.scatterplot(x=predictor_cols[0], y=target_col, data=df)
-            plt.xlabel(predictor_cols[0])
-            plt.ylabel(target_col)
-            st.pyplot()
-
-        except Exception as e:
-            st.write("An error occurred:", e)
-
-
-if __name__ == "__main__":
-    main()
+    # Plot relationship between predictor variables and consumption
+    fig, ax = plt.subplots()
+    sns.pairplot(df, x_vars=predictor_cols, y_vars='yearly_consumption', height=5, aspect=0.7, kind='reg')
+    st.pyplot(fig)
